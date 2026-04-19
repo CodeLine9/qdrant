@@ -207,7 +207,7 @@ impl Metric<VectorElementType> for CosineMetric {
 
 impl MetricPostProcessing for CosineMetric {
     fn postprocess(score: ScoreType) -> ScoreType {
-        score
+        score.clamp(-1.0, 1.0)
     }
 }
 
@@ -248,6 +248,19 @@ mod tests {
     fn test_cosine_preprocessing() {
         let res = <CosineMetric as Metric<VectorElementType>>::preprocess(vec![0.0, 0.0, 0.0, 0.0]);
         assert_eq!(res, vec![0.0, 0.0, 0.0, 0.0]);
+    }
+
+    /// Cosine postprocessing should clamp scores to [-1, 1] to handle
+    /// floating-point imprecision.
+    #[test]
+    fn test_cosine_postprocess_clamp() {
+        // Values exceeding the theoretical bound due to FP rounding
+        assert!(CosineMetric::postprocess(1.0000001) <= 1.0);
+        assert!(CosineMetric::postprocess(-1.0000001) >= -1.0);
+        assert_eq!(CosineMetric::postprocess(0.5), 0.5);
+        assert_eq!(CosineMetric::postprocess(-0.5), -0.5);
+        assert_eq!(CosineMetric::postprocess(1.0), 1.0);
+        assert_eq!(CosineMetric::postprocess(-1.0), -1.0);
     }
 
     /// If we preprocess a vector multiple times, we expect the same result.
